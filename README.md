@@ -253,7 +253,7 @@ Create a `.env.local` file (optional - no API keys required):
 We welcome contributions! Here's how you can help improve the Interior Designer AI project:
 
 ### Code Style
-
+ 
 - We use **Prettier** for code formatting
 - **ESLint** for code linting
 - **Husky** for pre-commit hooks
