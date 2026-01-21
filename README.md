@@ -33,8 +33,8 @@ A modern, AI-powered application for transforming interior spaces with cutting-e
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/interior-designer-ai.git
-   cd interior-designer-ai
+   git clone https://github.com/bikram73/Interior_Designer_Using_AI.git
+   cd Interior_Designer_Using_AI
    ```
 
 2. **Install dependencies**
