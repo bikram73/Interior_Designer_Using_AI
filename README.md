@@ -1,7 +1,5 @@
 # Interior Designer AI 🏠✨
 
-![interior-design-image](public/app-screenshot.png)
-
 A modern, AI-powered application for transforming interior spaces with cutting-edge design. Upload a photo of your room and get a redesigned space in seconds - **completely free!**
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2.35-black?style=flat-square&logo=next.js)](https://nextjs.org/)
