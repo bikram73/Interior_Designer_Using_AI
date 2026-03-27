@@ -36,6 +36,8 @@ function getNotificationType(message: string): "success" | "error" | "info" {
 export default function HomePage() {
   const [outputImage, setOutputImage] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [urlLoading, setUrlLoading] = useState<boolean>(false);
   const [theme, setTheme] = useState<string>(themes[0]);
   const [room, setRoom] = useState<string>(rooms[0]);
   const [loading, setLoading] = useState<boolean>(false);
