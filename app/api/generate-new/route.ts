@@ -13,15 +13,15 @@ const STYLE_DETAILS: Record<string, string> = {
 
 const ROOM_DETAILS: Record<string, string> = {
   "Living Room":
-    "living room with sofa set, coffee table, media unit, rug, and layered ambient lighting",
+    "a furnished living room with sofa set, coffee table, TV/media unit, rug, wall art, layered lighting",
   "Dining Room":
-    "dining room with dining table set, pendant lighting, sideboard, and curated decor accents",
+    "a furnished dining room with dining table set, pendant lighting, sideboard, decor accents",
   Bedroom:
-    "bedroom with styled bed, side tables, textiles, wardrobe details, and warm ambient lighting",
+    "a furnished bedroom with bed, side tables, wardrobe, soft textiles, ambient lighting",
   Bathroom:
-    "bathroom with vanity, mirror lighting, coordinated tiles, shower or tub zone, and clean styling",
+    "a designed bathroom with vanity, mirror lighting, shower or tub zone, coordinated tile materials",
   Office:
-    "office with work desk, ergonomic seating, storage, practical lighting, and professional composition",
+    "a functional office with desk setup, ergonomic chair, storage, focused lighting, professional styling",
 };
 
 async function generateWithHuggingFace(prompt: string): Promise<string | null> {
@@ -88,16 +88,8 @@ async function generateWithHuggingFace(prompt: string): Promise<string | null> {
 export async function POST(request: Request) {
   try {
     const req = await request.json();
-    const image = req.image;
     const theme = req.theme;
     const room = req.room;
-
-    if (!image) {
-      return NextResponse.json(
-        { error: "No image provided for transformation" },
-        { status: 400 }
-      );
-    }
 
     const selectedTheme =
       typeof theme === "string" && theme.trim() ? theme.trim() : "Modern";
@@ -107,19 +99,18 @@ export async function POST(request: Request) {
     const roomDetail =
       ROOM_DETAILS[selectedRoom] || ROOM_DETAILS["Living Room"];
 
-    const prompt = `Redesign this exact ${selectedRoom.toLowerCase()} in ${selectedTheme.toLowerCase()} style. ${styleDetail}. Include ${roomDetail}. Keep architecture and window placements realistic. Photorealistic interior photography, high detail, no text, no watermark.`;
+    const prompt = `Photorealistic interior design photo of ${roomDetail}, in ${selectedTheme.toLowerCase()} style, ${styleDetail}, cohesive color story, premium materials, well-staged decor, realistic shadows, high detail, architectural photography, no empty room, no text, no watermark.`;
 
-    console.log("Hugging Face transformation request:", {
+    console.log("Generating new room design with Hugging Face:", {
       theme: selectedTheme,
       room: selectedRoom,
-      imageLength: image?.length,
     });
 
     const output = await generateWithHuggingFace(prompt);
     if (!output) {
       return NextResponse.json(
         {
-          error: "Image generation failed",
+          error: "Failed to generate new room design",
           message:
             "Hugging Face could not generate an image. Check HUGGINGFACE_API_KEY and try again.",
         },
@@ -130,19 +121,17 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         output: [output],
-        message: `SUCCESS: Generated a ${selectedTheme} ${selectedRoom} design concept with Hugging Face.`,
+        message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design!`,
         service: "Hugging Face",
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Hugging Face route error:", error);
+    console.error("Error generating room design with Hugging Face:", error);
     return NextResponse.json(
       {
-        error: "Service Error",
-        message: `Error: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }.`,
+        error: "Failed to generate new room design",
+        message: "Unable to create new room design. Please try again.",
       },
       { status: 500 }
     );

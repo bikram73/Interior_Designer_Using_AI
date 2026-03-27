@@ -14,6 +14,9 @@ type ErrorNotificationProps = {
 type ActionPanelProps = {
   isLoading: boolean;
   submitImage(): void;
+  hasFile: boolean;
+  isProcessing?: boolean;
+  processingService?: string | null;
 };
 
 type UploadedImageProps = {
@@ -29,6 +32,7 @@ type ImageOutputProps = ImageAreaProps & {
   loading: boolean;
   outputImage: string | null;
   downloadOutputImage(): void;
+  isProcessing?: boolean;
 };
 
 const acceptedFileTypes = {
@@ -65,7 +69,13 @@ function ErrorNotification({ errorMessage }: ErrorNotificationProps) {
 /**
  * Display the action panel
  */
-function ActionPanel({ isLoading, submitImage }: ActionPanelProps) {
+function ActionPanel({
+  isLoading,
+  submitImage,
+  hasFile,
+  isProcessing,
+  processingService,
+}: ActionPanelProps) {
   const isDisabled = isLoading;
 
   return (
@@ -88,18 +98,23 @@ function ActionPanel({ isLoading, submitImage }: ActionPanelProps) {
             </motion.h3>
             <div className="mt-2 max-w-xl text-sm text-gray-300">
               <p>
-                Upload a photo of your room and let our AI generate a stunning
-                redesign.
+                {isProcessing
+                  ? `🔄 ${processingService} is transforming your room while preserving its structure...`
+                  : !hasFile
+                  ? "Generate stunning room designs with AI - this works perfectly!"
+                  : "Upload your room photo to transform it with Hugging Face AI while preserving the room structure."}
               </p>
             </div>
           </div>
           <div className="mt-5 sm:ml-6 sm:mt-0 sm:flex sm:flex-shrink-0 sm:items-center">
             <motion.button
               whileHover={{
-                scale: 1.02,
-                boxShadow: "0 0 20px rgba(79, 70, 229, 0.4)",
+                scale: isDisabled ? 1 : 1.02,
+                boxShadow: isDisabled
+                  ? "none"
+                  : "0 0 20px rgba(79, 70, 229, 0.4)",
               }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: isDisabled ? 1 : 0.98 }}
               type="button"
               disabled={isDisabled}
               onClick={submitImage}
@@ -109,7 +124,22 @@ function ActionPanel({ isLoading, submitImage }: ActionPanelProps) {
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500"
               } inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:px-5 lg:py-3`}
             >
-              {isLoading ? (
+              {isProcessing ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center"
+                >
+                  <ThreeDots
+                    height="20"
+                    width="30"
+                    color="#ccc"
+                    ariaLabel="loading"
+                    visible={true}
+                  />
+                  <span className="ml-2">Transforming Room...</span>
+                </motion.div>
+              ) : isLoading ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -126,7 +156,11 @@ function ActionPanel({ isLoading, submitImage }: ActionPanelProps) {
                 </motion.div>
               ) : (
                 <>
-                  <span>Design this room</span>
+                  <span>
+                    {!hasFile
+                      ? "Generate New Room Design"
+                      : "Transform My Room"}
+                  </span>
                   <SparklesIcon className="ml-2 h-5 w-5 text-indigo-200" />
                 </>
               )}
@@ -197,7 +231,7 @@ function ImageOutput(props: ImageOutputProps) {
               {props.title}
             </span>
             <span className="mt-2 text-xs text-gray-400">
-              The output will be an AI-generated redesign of your space
+              The output will be an AI transformation of your uploaded room
             </span>
           </motion.div>
         ) : null}
@@ -220,7 +254,7 @@ function ImageOutput(props: ImageOutputProps) {
         ) : null}
       </AnimatePresence>
 
-      {!props.loading && props.outputImage ? (
+      {!props.loading && props.outputImage && !props.isProcessing ? (
         <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}

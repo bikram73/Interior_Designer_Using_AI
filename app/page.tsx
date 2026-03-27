@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { saveAs } from "file-saver";
 import { FileRejection } from "react-dropzone";
 import { PhotoIcon } from "@heroicons/react/24/outline";
@@ -27,6 +27,12 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>("");
   const [file, setFile] = useState<File | null>(null);
   const [showIntro, setShowIntro] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingService, setProcessingService] = useState<string | null>(
+    null
+  );
+  const pollAttemptsRef = useRef(0);
+  const maxPollAttempts = 8;
 
   // Handle intro animation
   useEffect(() => {
@@ -36,6 +42,100 @@ export default function HomePage() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Poll for processing results
+  useEffect(() => {
+    if (!processingId || !processingService) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log(
+          `🔄 Polling ${processingService} for result:`,
+          processingId
+        );
+
+        const response = await fetch("/api/check-horde", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ predictionId: processingId }),
+        });
+
+        const result = await response.json();
+
+        if (result.completed && result.output) {
+          console.log("✅ Transformation completed!");
+          setOutputImage(result.output[0]);
+          setError(
+            `🎯 SUCCESS: Your room has been transformed! The AI preserved your room structure while applying the ${theme} ${room} style.`
+          );
+          setProcessingId(null);
+          setProcessingService(null);
+          setLoading(false);
+        } else if (result.error) {
+          console.log("❌ Processing failed:", result.error);
+          setError(
+            `❌ Transformation failed: ${result.message || result.error}`
+          );
+          setProcessingId(null);
+          setProcessingService(null);
+          setLoading(false);
+        } else {
+          pollAttemptsRef.current += 1;
+
+          if (pollAttemptsRef.current >= maxPollAttempts) {
+            console.log(
+              "⏰ Processing took too long, generating a new themed room as fallback..."
+            );
+
+            const fallbackResponse = await fetch("/api/generate-new", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ theme, room }),
+            });
+
+            const fallbackResult = await fallbackResponse.json();
+
+            if (fallbackResult.output?.[0]) {
+              setOutputImage(fallbackResult.output[0]);
+              setError(
+                `⏰ AI transformation queue timed out. Generated a new ${theme} ${room} concept instead.`
+              );
+            } else {
+              setError(
+                "❌ Transformation is taking too long and fallback generation failed. Please try again."
+              );
+            }
+
+            setProcessingId(null);
+            setProcessingService(null);
+            setLoading(false);
+            return;
+          }
+
+          // Still processing
+          console.log("🔄 Still processing...", result.message);
+          setError(
+            result.message ||
+              `🔄 Still processing your ${theme} ${room} transformation... (${pollAttemptsRef.current}/${maxPollAttempts})`
+          );
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        setError(
+          "❌ Error checking transformation status. The process may still be running."
+        );
+        setProcessingId(null);
+        setProcessingService(null);
+        setLoading(false);
+      }
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [processingId, processingService, theme, room]);
 
   // Handle image drop
   const onImageDrop = useCallback(
@@ -75,6 +175,10 @@ export default function HomePage() {
   const removeImage = useCallback((): void => {
     setFile(null);
     setOutputImage(null);
+    setProcessingId(null);
+    setProcessingService(null);
+    pollAttemptsRef.current = 0;
+    setError("");
   }, []);
 
   // Download the output image
@@ -91,14 +195,37 @@ export default function HomePage() {
 
   // Submit the image to the server
   const submitImage = useCallback(async (): Promise<void> => {
-    if (!file) {
-      setError("Please upload an image.");
-      return;
-    }
-
     setLoading(true);
+    setError("");
+    setProcessingId(null);
+    setProcessingService(null);
+    pollAttemptsRef.current = 0;
+    let keepLoadingForAsyncProcessing = false;
 
     try {
+      // If no file uploaded, generate a new room design (this actually works!)
+      if (!file) {
+        const response = await fetch("/api/generate-new", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ theme, room }),
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        setOutputImage(result.output[0]);
+        setError(`✅ Generated a beautiful ${theme} ${room} design!`);
+        return;
+      }
+
+      // If file uploaded, attempt transformation
       const response = await fetch("/api/replicate", {
         method: "POST",
         headers: {
@@ -108,20 +235,63 @@ export default function HomePage() {
       });
 
       const result = await response.json();
-      console.log('API Response:', result);
+      console.log("API Response:", result);
 
-      if (result.error) {
-        setError(result.error);
+      if (result.error && !result.isOriginalImage && !result.isProcessing) {
+        setError(
+          result.error + (result.message ? `\n\n${result.message}` : "")
+        );
         return;
       }
 
-      console.log('Setting output image:', result.output[0]);
+      // Handle async processing state (reserved for future providers)
+      if (result.isProcessing && result.predictionId) {
+        console.log(
+          `🔄 Starting to track ${result.service} processing:`,
+          result.predictionId
+        );
+        pollAttemptsRef.current = 0;
+        keepLoadingForAsyncProcessing = true;
+        setProcessingId(result.predictionId);
+        setProcessingService(result.service);
+        setOutputImage(result.output[0]); // Show original while processing
+        setError(result.message);
+        // Keep loading state for visual feedback
+        return;
+      }
+
+      // Handle immediate success
+      if (result.output && !result.isOriginalImage && !result.error) {
+        console.log("✅ Immediate transformation success!");
+        setOutputImage(result.output[0]);
+        setError(
+          result.message ||
+            `✅ Successfully transformed your room into ${theme} ${room} style!`
+        );
+        return;
+      }
+
+      // Handle original image with explanation
+      if (result.isOriginalImage) {
+        setOutputImage(result.output[0]);
+        setError(result.message);
+        return;
+      }
+
+      // Default case
       setOutputImage(result.output[0]);
+      if (result.message) {
+        setError(result.message);
+      }
     } catch (err) {
       console.error(err);
-      setError("An unexpected error occurred. Please try again.");
+      setError(
+        "An unexpected error occurred. Please try again with a different image or generate a new room design."
+      );
     } finally {
-      setLoading(false);
+      if (!keepLoadingForAsyncProcessing) {
+        setLoading(false);
+      }
     }
   }, [file, base64Image, theme, room]);
 
@@ -188,7 +358,13 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <ActionPanel isLoading={loading} submitImage={submitImage} />
+          <ActionPanel
+            isLoading={loading || !!processingId}
+            submitImage={submitImage}
+            hasFile={!!file}
+            isProcessing={!!processingId}
+            processingService={processingService}
+          />
         </motion.div>
 
         <motion.section
@@ -234,11 +410,12 @@ export default function HomePage() {
           </AnimatePresence>
 
           <ImageOutput
-            title="Your redesigned space will appear here"
+            title="Your transformed room design will appear here"
             downloadOutputImage={downloadOutputImage}
             outputImage={outputImage}
             icon={SparklesIcon}
             loading={loading}
+            isProcessing={!!processingId}
           />
         </motion.section>
 
