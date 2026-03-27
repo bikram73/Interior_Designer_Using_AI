@@ -57,7 +57,7 @@ function ErrorNotification({
     type === "success"
       ? {
           wrapper:
-            "mx-4 mb-6 rounded-xl border border-green-800/50 bg-green-900/20 p-4 shadow-[0_0_15px_rgba(34,197,94,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+            "fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-green-800/50 bg-green-900/20 p-4 shadow-[0_0_15px_rgba(34,197,94,0.2)] backdrop-blur-lg sm:top-24 sm:w-auto sm:min-w-[340px] sm:p-5 lg:right-6 lg:top-6",
           iconWrap: "rounded-full bg-green-900/50 p-2",
           icon: "h-5 w-5 text-green-400",
           text: "text-sm font-medium text-green-400",
@@ -66,7 +66,7 @@ function ErrorNotification({
       : type === "info"
       ? {
           wrapper:
-            "mx-4 mb-6 rounded-xl border border-blue-800/50 bg-blue-900/20 p-4 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+            "fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-blue-800/50 bg-blue-900/20 p-4 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-lg sm:top-24 sm:w-auto sm:min-w-[340px] sm:p-5 lg:right-6 lg:top-6",
           iconWrap: "rounded-full bg-blue-900/50 p-2",
           icon: "h-5 w-5 text-blue-400",
           text: "text-sm font-medium text-blue-300",
@@ -74,7 +74,7 @@ function ErrorNotification({
         }
       : {
           wrapper:
-            "mx-4 mb-6 rounded-xl border border-red-800/50 bg-red-900/20 p-4 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+            "fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-md rounded-xl border border-red-800/50 bg-red-900/20 p-4 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg sm:top-24 sm:w-auto sm:min-w-[340px] sm:p-5 lg:right-6 lg:top-6",
           iconWrap: "rounded-full bg-red-900/50 p-2",
           icon: "h-5 w-5 text-red-400",
           text: "text-sm font-medium text-red-400",
