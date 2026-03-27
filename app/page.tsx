@@ -210,6 +210,56 @@ export default function HomePage() {
     };
   }, []);
 
+  // Load image from URL through server route (avoids browser CORS issues)
+  const loadImageFromUrl = useCallback(async (): Promise<void> => {
+    if (!imageUrl.trim()) {
+      setError("Please enter an image URL first.");
+      return;
+    }
+
+    setUrlLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/fetch-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: imageUrl.trim() }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || result.error || !result.dataUrl) {
+        setError(result.error || "Could not load image from URL.");
+        return;
+      }
+
+      const fetchedBlob = await fetch(result.dataUrl).then((r) => r.blob());
+      const fetchedFile = new File(
+        [fetchedBlob],
+        result.fileName || "url-image.jpg",
+        {
+          type: fetchedBlob.type || "image/jpeg",
+        }
+      );
+
+      setOutputImage(null);
+      setFile(fetchedFile);
+      setBase64Image(result.dataUrl);
+      setError(
+        "✅ Image loaded from URL successfully. Click Transform My Room."
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        "❌ Failed to load image from URL. Please check the link and try again."
+      );
+    } finally {
+      setUrlLoading(false);
+    }
+  }, [imageUrl]);
+
   // Format file size
   const fileSize = useCallback((size: number): string => {
     if (size === 0) return "0 Bytes";
