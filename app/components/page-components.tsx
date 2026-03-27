@@ -76,7 +76,7 @@ function ActionPanel({
   isProcessing,
   processingService,
 }: ActionPanelProps) {
-  const isDisabled = isLoading;
+  const isDisabled = isLoading || !hasFile;
 
   return (
     <motion.section
@@ -101,7 +101,7 @@ function ActionPanel({
                 {isProcessing
                   ? `🔄 ${processingService} is transforming your room while preserving its structure...`
                   : !hasFile
-                  ? "Generate stunning room designs with AI - this works perfectly!"
+                  ? "Upload a room image to enable transformation."
                   : "Upload your room photo to transform it with Hugging Face AI while preserving the room structure."}
               </p>
             </div>
@@ -157,9 +157,7 @@ function ActionPanel({
               ) : (
                 <>
                   <span>
-                    {!hasFile
-                      ? "Generate New Room Design"
-                      : "Transform My Room"}
+                    {!hasFile ? "Upload Image First" : "Transform My Room"}
                   </span>
                   <SparklesIcon className="ml-2 h-5 w-5 text-indigo-200" />
                 </>

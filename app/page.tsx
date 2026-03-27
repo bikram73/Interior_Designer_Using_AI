@@ -223,6 +223,11 @@ export default function HomePage() {
 
   // Submit the image to the server
   const submitImage = useCallback(async (): Promise<void> => {
+    if (!file || !base64Image) {
+      setError("Please upload a room image first.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setProcessingId(null);
@@ -231,33 +236,6 @@ export default function HomePage() {
     let keepLoadingForAsyncProcessing = false;
 
     try {
-      // If no file uploaded, generate a new room design (this actually works!)
-      if (!file) {
-        const response = await fetch("/api/generate-new", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ theme, room }),
-        });
-
-        const result = await response.json();
-
-        if (result.error) {
-          setError(result.error);
-          return;
-        }
-
-        setOutputImage(result.output[0]);
-        persistHistory(
-          result.output[0],
-          "generate-new",
-          result.service || "Hugging Face"
-        );
-        setError(`✅ Generated a beautiful ${theme} ${room} design!`);
-        return;
-      }
-
       // If file uploaded, attempt transformation
       const response = await fetch("/api/replicate", {
         method: "POST",
