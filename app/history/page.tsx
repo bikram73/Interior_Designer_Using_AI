@@ -8,6 +8,7 @@ import {
   ArrowDownTrayIcon,
   TrashIcon,
   ClockIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { clearHistory, readHistory, removeHistoryItem } from "@/utils/history";
 import { HistoryItem } from "@/types";
@@ -22,6 +23,8 @@ function formatDate(iso: string) {
 
 export default function HistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
 
   useEffect(() => {
     setItems(readHistory());
@@ -63,6 +66,16 @@ export default function HistoryPage() {
   const handleClear = () => {
     clearHistory();
     setItems([]);
+  };
+
+  const openPreview = (image: string, title: string) => {
+    setPreviewImage(image);
+    setPreviewTitle(title);
+  };
+
+  const closePreview = () => {
+    setPreviewImage(null);
+    setPreviewTitle("");
   };
 
   return (
@@ -124,11 +137,23 @@ export default function HistoryPage() {
                       Uploaded Image
                     </div>
                     <div className="relative h-40 w-full sm:h-44">
-                      <img
-                        src={item.inputImage}
-                        alt={`Uploaded ${item.room}`}
-                        className="h-full w-full object-cover"
-                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openPreview(
+                            item.inputImage as string,
+                            `Uploaded Image - ${item.room}`
+                          )
+                        }
+                        className="h-full w-full"
+                        aria-label="Open uploaded image preview"
+                      >
+                        <img
+                          src={item.inputImage}
+                          alt={`Uploaded ${item.room}`}
+                          className="h-full w-full object-cover transition hover:opacity-90"
+                        />
+                      </button>
                     </div>
                   </div>
                 ) : null}
@@ -138,11 +163,23 @@ export default function HistoryPage() {
                     Generated Image
                   </div>
                   <div className="relative h-40 w-full sm:h-44">
-                    <img
-                      src={item.outputImage}
-                      alt={`${item.theme} ${item.room}`}
-                      className="h-full w-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openPreview(
+                          item.outputImage,
+                          `Generated Image - ${item.theme} ${item.room}`
+                        )
+                      }
+                      className="h-full w-full"
+                      aria-label="Open generated image preview"
+                    >
+                      <img
+                        src={item.outputImage}
+                        alt={`${item.theme} ${item.room}`}
+                        className="h-full w-full object-cover transition hover:opacity-90"
+                      />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -201,6 +238,33 @@ export default function HistoryPage() {
           ))}
         </section>
       )}
+
+      {previewImage ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-5xl rounded-xl border border-gray-700 bg-gray-950 p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-gray-200">
+                {previewTitle}
+              </p>
+              <button
+                type="button"
+                onClick={closePreview}
+                className="rounded-lg bg-gray-800 p-2 text-gray-200 transition hover:bg-gray-700"
+                aria-label="Close image preview"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[78vh] overflow-auto rounded-lg">
+              <img
+                src={previewImage}
+                alt={previewTitle}
+                className="mx-auto h-auto max-h-[78vh] w-auto max-w-full rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
