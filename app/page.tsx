@@ -18,6 +18,7 @@ import {
 
 const themes = ["Modern", "Vintage", "Minimalist", "Professional"];
 const rooms = ["Living Room", "Dining Room", "Bedroom", "Bathroom", "Office"];
+const NOTIFICATION_TIMEOUT_MS = 4500;
 
 function getNotificationType(message: string): "success" | "error" | "info" {
   const normalized = message.toLowerCase();
@@ -78,6 +79,19 @@ export default function HomePage() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-hide notifications after a short duration.
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setError("");
+    }, NOTIFICATION_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [error]);
 
   // Poll for processing results
   useEffect(() => {
