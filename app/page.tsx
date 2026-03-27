@@ -7,6 +7,7 @@ import { PhotoIcon } from "@heroicons/react/24/outline";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { SelectMenu } from "@/app/selectmenu";
 import { motion, AnimatePresence } from "framer-motion";
+import { addHistoryItem } from "@/utils/history";
 import {
   ErrorNotification,
   ActionPanel,
@@ -33,6 +34,23 @@ export default function HomePage() {
   );
   const pollAttemptsRef = useRef(0);
   const maxPollAttempts = 8;
+
+  const persistHistory = useCallback(
+    (
+      generatedImage: string,
+      source: "transform" | "generate-new",
+      service?: string
+    ) => {
+      addHistoryItem({
+        outputImage: generatedImage,
+        theme,
+        room,
+        source,
+        service,
+      });
+    },
+    [theme, room]
+  );
 
   // Handle intro animation
   useEffect(() => {
@@ -67,6 +85,11 @@ export default function HomePage() {
         if (result.completed && result.output) {
           console.log("✅ Transformation completed!");
           setOutputImage(result.output[0]);
+          persistHistory(
+            result.output[0],
+            "transform",
+            result.service || processingService || "Hugging Face"
+          );
           setError(
             `🎯 SUCCESS: Your room has been transformed! The AI preserved your room structure while applying the ${theme} ${room} style.`
           );
@@ -101,6 +124,11 @@ export default function HomePage() {
 
             if (fallbackResult.output?.[0]) {
               setOutputImage(fallbackResult.output[0]);
+              persistHistory(
+                fallbackResult.output[0],
+                "generate-new",
+                fallbackResult.service || "Hugging Face"
+              );
               setError(
                 `⏰ AI transformation queue timed out. Generated a new ${theme} ${room} concept instead.`
               );
@@ -221,6 +249,11 @@ export default function HomePage() {
         }
 
         setOutputImage(result.output[0]);
+        persistHistory(
+          result.output[0],
+          "generate-new",
+          result.service || "Hugging Face"
+        );
         setError(`✅ Generated a beautiful ${theme} ${room} design!`);
         return;
       }
@@ -264,6 +297,11 @@ export default function HomePage() {
       if (result.output && !result.isOriginalImage && !result.error) {
         console.log("✅ Immediate transformation success!");
         setOutputImage(result.output[0]);
+        persistHistory(
+          result.output[0],
+          "transform",
+          result.service || "Hugging Face"
+        );
         setError(
           result.message ||
             `✅ Successfully transformed your room into ${theme} ${room} style!`
@@ -279,7 +317,14 @@ export default function HomePage() {
       }
 
       // Default case
-      setOutputImage(result.output[0]);
+      if (result.output?.[0]) {
+        setOutputImage(result.output[0]);
+        persistHistory(
+          result.output[0],
+          file ? "transform" : "generate-new",
+          result.service || "Hugging Face"
+        );
+      }
       if (result.message) {
         setError(result.message);
       }
@@ -293,7 +338,7 @@ export default function HomePage() {
         setLoading(false);
       }
     }
-  }, [file, base64Image, theme, room]);
+  }, [file, base64Image, theme, room, persistHistory, processingService]);
 
   return (
     <>
