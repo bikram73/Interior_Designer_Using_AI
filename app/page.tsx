@@ -19,6 +19,20 @@ import {
 const themes = ["Modern", "Vintage", "Minimalist", "Professional"];
 const rooms = ["Living Room", "Dining Room", "Bedroom", "Bathroom", "Office"];
 
+function getNotificationType(message: string): "success" | "error" | "info" {
+  const normalized = message.toLowerCase();
+
+  if (message.includes("✅") || normalized.includes("success")) {
+    return "success";
+  }
+
+  if (message.includes("🔄") || normalized.includes("processing")) {
+    return "info";
+  }
+
+  return "error";
+}
+
 export default function HomePage() {
   const [outputImage, setOutputImage] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
@@ -379,7 +393,12 @@ export default function HomePage() {
         className="flex min-h-screen flex-col pb-8 pt-4 lg:pl-72 lg:pt-10"
       >
         <AnimatePresence>
-          {error && <ErrorNotification errorMessage={error} />}
+          {error && (
+            <ErrorNotification
+              errorMessage={error}
+              type={getNotificationType(error)}
+            />
+          )}
         </AnimatePresence>
 
         <motion.div

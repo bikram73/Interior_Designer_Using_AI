@@ -1,4 +1,8 @@
-import { XCircleIcon } from "@heroicons/react/20/solid";
+import {
+  XCircleIcon,
+  CheckCircleIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/20/solid";
 import { PhotoIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { FaTrashAlt, FaDownload } from "react-icons/fa";
 import { ThreeDots } from "react-loader-spinner";
@@ -9,6 +13,7 @@ import { FileRejection } from "react-dropzone";
 
 type ErrorNotificationProps = {
   errorMessage: string;
+  type?: "success" | "error" | "info";
 };
 
 type ActionPanelProps = {
@@ -44,22 +49,55 @@ const maxFileSize = 5 * 1024 * 1024; // 5MB
 /**
  * Display an error notification
  */
-function ErrorNotification({ errorMessage }: ErrorNotificationProps) {
+function ErrorNotification({
+  errorMessage,
+  type = "error",
+}: ErrorNotificationProps) {
+  const styles =
+    type === "success"
+      ? {
+          wrapper:
+            "mx-4 mb-6 rounded-xl border border-green-800/50 bg-green-900/20 p-4 shadow-[0_0_15px_rgba(34,197,94,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+          iconWrap: "rounded-full bg-green-900/50 p-2",
+          icon: "h-5 w-5 text-green-400",
+          text: "text-sm font-medium text-green-400",
+          IconComponent: CheckCircleIcon,
+        }
+      : type === "info"
+      ? {
+          wrapper:
+            "mx-4 mb-6 rounded-xl border border-blue-800/50 bg-blue-900/20 p-4 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+          iconWrap: "rounded-full bg-blue-900/50 p-2",
+          icon: "h-5 w-5 text-blue-400",
+          text: "text-sm font-medium text-blue-300",
+          IconComponent: InformationCircleIcon,
+        }
+      : {
+          wrapper:
+            "mx-4 mb-6 rounded-xl border border-red-800/50 bg-red-900/20 p-4 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8",
+          iconWrap: "rounded-full bg-red-900/50 p-2",
+          icon: "h-5 w-5 text-red-400",
+          text: "text-sm font-medium text-red-400",
+          IconComponent: XCircleIcon,
+        };
+
+  const Icon = styles.IconComponent;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-4 mb-6 rounded-xl border border-red-800/50 bg-red-900/20 p-4 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8"
+      className={styles.wrapper}
     >
       <div className="flex items-center">
         <div className="flex-shrink-0">
-          <div className="rounded-full bg-red-900/50 p-2">
-            <XCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+          <div className={styles.iconWrap}>
+            <Icon className={styles.icon} aria-hidden="true" />
           </div>
         </div>
         <div className="ml-4">
-          <p className="text-sm font-medium text-red-400">{errorMessage}</p>
+          <p className={styles.text}>{errorMessage}</p>
         </div>
       </div>
     </motion.div>
