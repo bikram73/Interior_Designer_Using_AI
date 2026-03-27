@@ -23,6 +23,7 @@ export type HistorySource = "transform" | "generate-new";
 
 export type HistoryItem = {
   id: string;
+  inputImage?: string;
   outputImage: string;
   theme: string;
   room: string;

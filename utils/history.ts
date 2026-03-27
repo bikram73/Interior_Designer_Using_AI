@@ -29,6 +29,8 @@ export function readHistory(): HistoryItem[] {
       (item) =>
         item &&
         typeof item.id === "string" &&
+        (typeof item.inputImage === "undefined" ||
+          typeof item.inputImage === "string") &&
         typeof item.outputImage === "string" &&
         typeof item.theme === "string" &&
         typeof item.room === "string" &&
@@ -52,6 +54,7 @@ export function writeHistory(items: HistoryItem[]) {
 }
 
 export function addHistoryItem(input: {
+  inputImage?: string;
   outputImage: string;
   theme: string;
   room: string;
@@ -63,6 +66,7 @@ export function addHistoryItem(input: {
   const next: HistoryItem[] = [
     {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      inputImage: input.inputImage,
       outputImage: input.outputImage,
       theme: input.theme,
       room: input.room,

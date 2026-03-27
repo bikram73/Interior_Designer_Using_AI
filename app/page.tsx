@@ -39,9 +39,11 @@ export default function HomePage() {
     (
       generatedImage: string,
       source: "transform" | "generate-new",
+      inputImage?: string,
       service?: string
     ) => {
       addHistoryItem({
+        inputImage,
         outputImage: generatedImage,
         theme,
         room,
@@ -88,6 +90,7 @@ export default function HomePage() {
           persistHistory(
             result.output[0],
             "transform",
+            base64Image || undefined,
             result.service || processingService || "Hugging Face"
           );
           setError(
@@ -127,6 +130,7 @@ export default function HomePage() {
               persistHistory(
                 fallbackResult.output[0],
                 "generate-new",
+                undefined,
                 fallbackResult.service || "Hugging Face"
               );
               setError(
@@ -278,6 +282,7 @@ export default function HomePage() {
         persistHistory(
           result.output[0],
           "transform",
+          base64Image,
           result.service || "Hugging Face"
         );
         setError(
@@ -300,6 +305,7 @@ export default function HomePage() {
         persistHistory(
           result.output[0],
           file ? "transform" : "generate-new",
+          file ? base64Image || undefined : undefined,
           result.service || "Hugging Face"
         );
       }

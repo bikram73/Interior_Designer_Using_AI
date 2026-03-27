@@ -38,11 +38,22 @@ export default function HistoryPage() {
     }));
   }, [items]);
 
-  const handleDownload = (item: HistoryItem) => {
+  const handleDownloadGenerated = (item: HistoryItem) => {
     const fileName = `history-${item.theme.toLowerCase()}-${item.room
       .toLowerCase()
       .replace(/\s+/g, "-")}-${item.id}.png`;
     saveAs(item.outputImage, fileName);
+  };
+
+  const handleDownloadUploaded = (item: HistoryItem) => {
+    if (!item.inputImage) {
+      return;
+    }
+
+    const fileName = `uploaded-${item.theme.toLowerCase()}-${item.room
+      .toLowerCase()
+      .replace(/\s+/g, "-")}-${item.id}.png`;
+    saveAs(item.inputImage, fileName);
   };
 
   const handleRemove = (id: string) => {
@@ -106,15 +117,38 @@ export default function HistoryPage() {
               animate={{ opacity: 1, y: 0 }}
               className="overflow-hidden rounded-2xl border border-gray-800/50 bg-gray-900/40 shadow-xl"
             >
-              <div className="relative h-48 w-full sm:h-52">
-                <img
-                  src={item.outputImage}
-                  alt={`${item.theme} ${item.room}`}
-                  className="h-full w-full object-cover"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+              <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2">
+                {item.inputImage ? (
+                  <div className="overflow-hidden rounded-xl border border-gray-800/50">
+                    <div className="bg-gray-800/80 px-2 py-1 text-xs font-medium text-gray-200">
+                      Uploaded Image
+                    </div>
+                    <div className="relative h-40 w-full sm:h-44">
+                      <img
+                        src={item.inputImage}
+                        alt={`Uploaded ${item.room}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                <div className="overflow-hidden rounded-xl border border-gray-800/50">
+                  <div className="bg-indigo-900/50 px-2 py-1 text-xs font-medium text-indigo-200">
+                    Generated Image
+                  </div>
+                  <div className="relative h-40 w-full sm:h-44">
+                    <img
+                      src={item.outputImage}
+                      alt={`${item.theme} ${item.room}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-4">
+                <div className="flex items-center justify-between gap-2">
                   <span className="rounded-full bg-blue-600/80 px-2 py-1 text-xs font-semibold text-white">
                     {item.theme}
                   </span>
@@ -122,31 +156,44 @@ export default function HistoryPage() {
                     {item.room}
                   </span>
                 </div>
-              </div>
 
-              <div className="space-y-3 p-4">
                 <div className="space-y-1 text-xs text-gray-300">
                   <p>Service: {item.service || "Hugging Face"}</p>
                   <p>Source: {item.sourceLabel}</p>
                   <p>Created: {item.createdLabel}</p>
                 </div>
 
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {item.inputImage ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadUploaded(item)}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800/80 px-3 py-2 text-sm font-semibold text-gray-100 transition hover:bg-gray-700"
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                      Download Uploaded
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadGenerated(item)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:from-blue-500 hover:to-indigo-500"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Download Generated
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleDownload(item)}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:from-blue-500 hover:to-indigo-500"
-                  >
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                    Download
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => handleRemove(item.id)}
-                    className="inline-flex items-center justify-center rounded-lg bg-red-600/90 p-2.5 text-white transition hover:bg-red-500"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-600/90 px-3 py-2 text-white transition hover:bg-red-500"
                     aria-label="Remove history item"
                   >
                     <TrashIcon className="h-4 w-4" />
+                    Remove from History
                   </button>
                 </div>
               </div>
