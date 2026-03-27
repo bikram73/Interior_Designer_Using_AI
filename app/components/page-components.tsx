@@ -50,7 +50,7 @@ function ErrorNotification({ errorMessage }: ErrorNotificationProps) {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="mx-4 mb-10 rounded-xl border border-red-800/50 bg-red-900/20 p-5 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg lg:mx-6 xl:mx-8"
+      className="mx-4 mb-6 rounded-xl border border-red-800/50 bg-red-900/20 p-4 shadow-[0_0_15px_rgba(220,38,38,0.2)] backdrop-blur-lg sm:mb-8 sm:p-5 lg:mx-6 xl:mx-8"
     >
       <div className="flex items-center">
         <div className="flex-shrink-0">
@@ -85,7 +85,7 @@ function ActionPanel({
       transition={{ duration: 0.4 }}
       className="mx-4 overflow-hidden rounded-2xl border border-gray-800/30 bg-gray-900/30 shadow-xl backdrop-blur-lg lg:mx-6 xl:mx-8"
     >
-      <div className="px-6 py-6 sm:p-8">
+      <div className="px-4 py-4 sm:p-6 lg:p-8">
         <div className="sm:flex sm:items-start sm:justify-between">
           <div>
             <motion.h3
@@ -122,7 +122,7 @@ function ActionPanel({
                 isDisabled
                   ? "cursor-not-allowed bg-indigo-800/50 text-gray-300"
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500"
-              } inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:px-5 lg:py-3`}
+              } inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:w-auto lg:px-5 lg:py-3`}
             >
               {isProcessing ? (
                 <motion.div
@@ -179,7 +179,7 @@ function ImageOutput(props: ImageOutputProps) {
   return (
     <motion.section
       layout
-      className="relative min-h-[350px] w-full overflow-hidden rounded-2xl border border-gray-800/50 bg-gray-900/30 shadow-2xl backdrop-blur-sm"
+      className="relative min-h-[280px] w-full overflow-hidden rounded-2xl border border-gray-800/50 bg-gray-900/30 shadow-2xl backdrop-blur-sm sm:min-h-[350px]"
     >
       <AnimatePresence mode="wait">
         {!props.outputImage && props.loading ? (
@@ -264,7 +264,7 @@ function ImageOutput(props: ImageOutputProps) {
           }}
           whileTap={{ scale: 0.9 }}
           onClick={props.downloadOutputImage}
-          className="absolute bottom-4 right-4 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 p-3 text-white shadow-xl"
+          className="absolute bottom-3 right-3 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 p-2.5 text-white shadow-xl sm:bottom-4 sm:right-4 sm:p-3"
         >
           <FaDownload className="h-5 w-5" />
         </motion.button>
@@ -282,7 +282,7 @@ function UploadedImage({ file, image, removeImage }: UploadedImageProps) {
       layout
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="relative min-h-[350px] w-full overflow-hidden rounded-2xl border border-gray-800/50 bg-gray-900/30 shadow-2xl"
+      className="relative min-h-[280px] w-full overflow-hidden rounded-2xl border border-gray-800/50 bg-gray-900/30 shadow-2xl sm:min-h-[350px]"
     >
       <img
         src={URL.createObjectURL(image)}
@@ -299,7 +299,7 @@ function UploadedImage({ file, image, removeImage }: UploadedImageProps) {
           boxShadow: "0 0 15px rgba(239, 68, 68, 0.6)",
         }}
         whileTap={{ scale: 0.9 }}
-        className="absolute right-4 top-4 rounded-full bg-gradient-to-r from-red-500 to-rose-500 p-3 text-white shadow-xl"
+        className="absolute right-3 top-3 rounded-full bg-gradient-to-r from-red-500 to-rose-500 p-2.5 text-white shadow-xl sm:right-4 sm:top-4 sm:p-3"
         onClick={removeImage}
       >
         <FaTrashAlt className="h-5 w-5" />
@@ -337,7 +337,7 @@ function ImageDropzone(
           <input {...getInputProps()} />
           <div
             {...getRootProps()}
-            className={`relative min-h-[350px] w-full rounded-2xl border-2 border-dashed ${
+            className={`relative min-h-[280px] w-full rounded-2xl border-2 border-dashed sm:min-h-[350px] ${
               isDragActive
                 ? "border-indigo-400 bg-indigo-900/20"
                 : "border-gray-700 bg-gray-900/30"

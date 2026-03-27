@@ -6,6 +6,7 @@ import { Dialog } from "@headlessui/react";
 import { navigation } from "@/common";
 import { classNames } from "@/utils";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 type SidebarProps = {
   sidebarOpen: boolean;
@@ -60,7 +61,7 @@ export function MobileSidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
             leaveFrom="translate-x-0"
             leaveTo="-translate-x-full"
           >
-            <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+            <Dialog.Panel className="relative mr-10 flex w-full max-w-[85vw] flex-1">
               <Transition.Child
                 as={Fragment}
                 enter="ease-in-out duration-300"
@@ -115,8 +116,9 @@ export function MobileSidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                       <ul role="list" className="-mx-2 space-y-1">
                         {navigation.map((item) => (
                           <motion.li key={item.name} variants={itemVariants}>
-                            <a
+                            <Link
                               href={item.href}
+                              onClick={() => setSidebarOpen(false)}
                               className={classNames(
                                 "group relative flex gap-x-3 overflow-hidden rounded-xl p-2 text-sm font-medium leading-6 transition-all duration-300",
                                 pathName === item.href
@@ -155,7 +157,7 @@ export function MobileSidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                                   <span className="ml-auto h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400"></span>
                                 )}
                               </span>
-                            </a>
+                            </Link>
                           </motion.li>
                         ))}
                       </ul>

@@ -347,7 +347,7 @@ export default function HomePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="flex min-h-screen flex-col py-10 lg:pl-72"
+        className="flex min-h-screen flex-col pb-8 pt-4 lg:pl-72 lg:pt-10"
       >
         <AnimatePresence>
           {error && <ErrorNotification errorMessage={error} />}
@@ -371,7 +371,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="mx-4 mt-9 flex w-full flex-col space-y-8 md:flex-row md:space-x-8 md:space-y-0 lg:mx-6 xl:mx-8"
+          className="mt-6 grid grid-cols-1 gap-4 px-4 sm:mt-8 sm:grid-cols-2 lg:px-6 xl:px-8"
         >
           <SelectMenu
             label="Design Style"
@@ -391,7 +391,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-10 grid flex-1 gap-8 px-4 lg:px-6 xl:grid-cols-2 xl:gap-10 xl:px-8"
+          className="mt-8 grid flex-1 gap-5 px-4 sm:gap-6 lg:px-6 xl:mt-10 xl:grid-cols-2 xl:gap-10 xl:px-8"
         >
           <AnimatePresence mode="wait">
             {!file ? (

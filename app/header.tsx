@@ -17,7 +17,7 @@ export function Header({ onClick }: HeaderProps) {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 z-40 flex items-center gap-x-6 border-b border-gray-800/30 bg-gray-900/50 px-4 py-4 backdrop-blur-xl lg:hidden"
+      className="sticky top-0 z-40 flex items-center gap-x-3 border-b border-gray-800/30 bg-gray-900/50 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl sm:gap-x-6 sm:px-4 sm:pb-4 lg:hidden"
     >
       <motion.button
         whileHover={{ scale: 1.05 }}
