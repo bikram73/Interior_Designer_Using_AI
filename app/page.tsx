@@ -250,6 +250,14 @@ export default function HomePage() {
       }
 
       const fetchedBlob = await fetch(result.dataUrl).then((r) => r.blob());
+      const minRecommendedBytes = 120 * 1024;
+      if (fetchedBlob.size < minRecommendedBytes) {
+        setError(
+          "The URL image is too small/thumbnail quality. Please use a direct high-resolution image link (at least ~120 KB) for better AI Horde results."
+        );
+        return;
+      }
+
       const fetchedFile = new File(
         [fetchedBlob],
         result.fileName || "url-image.jpg",

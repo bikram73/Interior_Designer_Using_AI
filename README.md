@@ -23,10 +23,11 @@ A modern AI-powered app to redesign interior spaces. Upload a room image or gene
 
 ## 🤖 AI Provider
 
-This project currently uses Hugging Face only.
+This project uses AI Horde as the primary provider, with Hugging Face as fallback.
 
-- Required env variable: HUGGINGFACE_API_KEY
-- Inference is executed through Hugging Face endpoints in API routes
+- Required env variable: AI_HORDE_API_KEY
+- Optional fallback env variable: HUGGINGFACE_API_KEY
+- Generation first attempts AI Horde and falls back to Hugging Face when needed
 
 ## 🚀 Quick Start
 
@@ -34,7 +35,8 @@ This project currently uses Hugging Face only.
 
 - Node.js 18+
 - npm
-- Hugging Face token with inference permissions
+- AI Horde API key
+- (Optional) Hugging Face token with inference permissions for fallback
 
 ### 1. Clone
 
@@ -54,6 +56,7 @@ npm install
 Create .env.local in project root:
 
 ```env
+AI_HORDE_API_KEY=ah_your_token_here
 HUGGINGFACE_API_KEY=hf_your_token_here
 ```
 
@@ -191,6 +194,15 @@ Check these quickly:
 - Token has Inference permission
 - Hugging Face quota/rate limits are available
 - Terminal logs for endpoint/model fallback details
+
+### AI Horde generation fails
+
+Check these quickly:
+
+- AI_HORDE_API_KEY exists in .env.local
+- Key is valid and active
+- AI Horde queue may be busy; retry after a short wait
+- Terminal logs for AI Horde submit/check/status errors
 
 ## 🔐 Security
 

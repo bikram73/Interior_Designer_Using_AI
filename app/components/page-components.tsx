@@ -140,7 +140,7 @@ function ActionPanel({
                   ? `🔄 ${processingService} is transforming your room while preserving its structure...`
                   : !hasFile
                   ? "Upload a room image to enable transformation."
-                  : "Upload your room photo to transform it with Hugging Face AI while preserving the room structure."}
+                  : "Upload your room photo to transform it with AI Horde and Hugging Face AI while preserving the room structure."}
               </p>
             </div>
           </div>

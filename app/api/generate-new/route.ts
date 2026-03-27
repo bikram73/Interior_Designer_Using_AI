@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+const REQUEST_TIMEOUT_MS = 30000;
+const AI_HORDE_BASE_URL = "https://stablehorde.net/api/v2";
+const AI_HORDE_POLL_INTERVAL_MS = 1500;
+const AI_HORDE_MAX_POLLS = 20;
+const HF_ROUTER_ENDPOINT = "https://router.huggingface.co/hf-inference/models";
+
 const STYLE_DETAILS: Record<string, string> = {
   Modern:
     "clean geometric lines, neutral palette, natural textures, balanced composition, contemporary decor",
@@ -24,6 +30,172 @@ const ROOM_DETAILS: Record<string, string> = {
     "a functional office with desk setup, ergonomic chair, storage, focused lighting, professional styling",
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function generateWithAiHorde(prompt: string): Promise<string | null> {
+  const aiHordeKey = process.env.AI_HORDE_API_KEY;
+  if (!aiHordeKey) {
+    console.log("AI_HORDE_API_KEY not found.");
+    return null;
+  }
+
+  try {
+    const submitResponse = await fetchWithTimeout(
+      `${AI_HORDE_BASE_URL}/generate/async`,
+      {
+        method: "POST",
+        headers: {
+          apikey: aiHordeKey,
+          "Client-Agent": "interior-designer-ai:1.0.0",
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          params: {
+            width: 768,
+            height: 768,
+            steps: 30,
+            cfg_scale: 7,
+            sampler_name: "k_euler_a",
+            n: 1,
+          },
+        }),
+      }
+    );
+
+    if (!submitResponse.ok) {
+      const errText = await submitResponse.text();
+      console.log(
+        "AI Horde submit failed:",
+        submitResponse.status,
+        errText.slice(0, 240)
+      );
+      return null;
+    }
+
+    const submitData = (await submitResponse.json()) as { id?: string };
+    if (!submitData?.id) {
+      console.log("AI Horde submit did not return request id.");
+      return null;
+    }
+
+    const requestId = submitData.id;
+    for (let poll = 0; poll < AI_HORDE_MAX_POLLS; poll++) {
+      await sleep(AI_HORDE_POLL_INTERVAL_MS);
+
+      const checkResponse = await fetchWithTimeout(
+        `${AI_HORDE_BASE_URL}/generate/check/${requestId}`,
+        {
+          headers: {
+            apikey: aiHordeKey,
+            "Client-Agent": "interior-designer-ai:1.0.0",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!checkResponse.ok) {
+        continue;
+      }
+
+      const checkData = (await checkResponse.json()) as {
+        done?: boolean;
+        faulted?: boolean;
+      };
+
+      if (checkData.faulted) {
+        console.log("AI Horde generation faulted.");
+        return null;
+      }
+
+      if (!checkData.done) {
+        continue;
+      }
+
+      const statusResponse = await fetchWithTimeout(
+        `${AI_HORDE_BASE_URL}/generate/status/${requestId}`,
+        {
+          headers: {
+            apikey: aiHordeKey,
+            "Client-Agent": "interior-designer-ai:1.0.0",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!statusResponse.ok) {
+        const errText = await statusResponse.text();
+        console.log(
+          "AI Horde status failed:",
+          statusResponse.status,
+          errText.slice(0, 240)
+        );
+        return null;
+      }
+
+      const statusData = (await statusResponse.json()) as {
+        generations?: Array<{ img?: string }>;
+      };
+      const image = statusData.generations?.find((item) => item.img)?.img;
+      if (!image) {
+        console.log("AI Horde returned no image in generations.");
+        return null;
+      }
+
+      if (image.startsWith("data:image")) {
+        return image;
+      }
+
+      if (image.startsWith("http://") || image.startsWith("https://")) {
+        // Fetch the image from URL and convert to base64
+        try {
+          const imgResponse = await fetchWithTimeout(image, {
+            headers: { Accept: "image/*" },
+          });
+          if (imgResponse.ok) {
+            const blob = await imgResponse.blob();
+            const arrayBuffer = await blob.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            return `data:image/jpeg;base64,${base64}`;
+          }
+        } catch (err) {
+          console.log("Failed to fetch AI Horde URL:", err);
+        }
+        // If URL retrieval fails, allow normal fallback path (e.g. Hugging Face)
+        return null;
+      }
+
+      return `data:image/jpeg;base64,${image}`;
+    }
+
+    console.log("AI Horde timed out before completion.");
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.log("AI Horde error:", message);
+    return null;
+  }
+}
+
 async function generateWithHuggingFace(prompt: string): Promise<string | null> {
   const hfApiKey = process.env.HUGGINGFACE_API_KEY;
   if (!hfApiKey) {
@@ -35,15 +207,11 @@ async function generateWithHuggingFace(prompt: string): Promise<string | null> {
     "black-forest-labs/FLUX.1-schnell",
     "stabilityai/stable-diffusion-xl-base-1.0",
   ];
-  const endpoints = [
-    "https://router.huggingface.co/hf-inference/models",
-    "https://api-inference.huggingface.co/models",
-  ];
-
   for (const model of hfModels) {
-    for (const endpoint of endpoints) {
-      try {
-        const response = await fetch(`${endpoint}/${model}`, {
+    try {
+      const response = await fetchWithTimeout(
+        `${HF_ROUTER_ENDPOINT}/${model}`,
+        {
           method: "POST",
           headers: {
             Authorization: `Bearer ${hfApiKey}`,
@@ -57,28 +225,26 @@ async function generateWithHuggingFace(prompt: string): Promise<string | null> {
               num_inference_steps: 28,
             },
           }),
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          console.log(
-            `Hugging Face ${model} via ${endpoint} failed:`,
-            response.status,
-            errText.slice(0, 240)
-          );
-          continue;
         }
+      );
 
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
+      if (!response.ok) {
+        const errText = await response.text();
         console.log(
-          `Hugging Face (${model}) generated image successfully via ${endpoint}`
+          `Hugging Face ${model} failed:`,
+          response.status,
+          errText.slice(0, 240)
         );
-        return `data:image/jpeg;base64,${base64}`;
-      } catch (error) {
-        console.log(`Hugging Face ${model} via ${endpoint} error:`, error);
+        continue;
       }
+
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      console.log(`Hugging Face (${model}) generated image successfully.`);
+      return `data:image/jpeg;base64,${base64}`;
+    } catch (error) {
+      console.log(`Hugging Face ${model} error:`, error);
     }
   }
 
@@ -101,10 +267,22 @@ export async function POST(request: Request) {
 
     const prompt = `Photorealistic interior design photo of ${roomDetail}, in ${selectedTheme.toLowerCase()} style, ${styleDetail}, cohesive color story, premium materials, well-staged decor, realistic shadows, high detail, architectural photography, no empty room, no text, no watermark.`;
 
-    console.log("Generating new room design with Hugging Face:", {
+    console.log("Generating new room design with AI Horde:", {
       theme: selectedTheme,
       room: selectedRoom,
     });
+
+    const aiHordeOutput = await generateWithAiHorde(prompt);
+    if (aiHordeOutput) {
+      return NextResponse.json(
+        {
+          output: [aiHordeOutput],
+          message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design!`,
+          service: "AI Horde",
+        },
+        { status: 201 }
+      );
+    }
 
     const output = await generateWithHuggingFace(prompt);
     if (!output) {
@@ -127,7 +305,7 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error generating room design with Hugging Face:", error);
+    console.error("Error generating room design with AI Horde:", error);
     return NextResponse.json(
       {
         error: "Failed to generate new room design",
