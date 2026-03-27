@@ -461,7 +461,7 @@ export default function HomePage() {
           <ActionPanel
             isLoading={loading || !!processingId}
             submitImage={submitImage}
-            hasFile={!!file}
+            hasFile={!!base64Image}
             isProcessing={!!processingId}
             processingService={processingService}
           />
@@ -485,6 +485,34 @@ export default function HomePage() {
             selected={room}
             onChange={setRoom}
           />
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.55 }}
+          className="mx-4 mt-4 rounded-xl border border-gray-800/40 bg-gray-900/30 p-4 backdrop-blur-lg lg:mx-6 xl:mx-8"
+        >
+          <p className="mb-2 text-sm font-medium text-gray-200">
+            Or load image from URL link
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/room.jpg"
+              className="w-full rounded-lg border border-gray-700 bg-gray-800/70 px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={loadImageFromUrl}
+              disabled={urlLoading}
+              className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:from-blue-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {urlLoading ? "Loading..." : "Load URL"}
+            </button>
+          </div>
         </motion.section>
 
         <motion.section
