@@ -26,11 +26,12 @@ A modern AI-powered app to redesign interior spaces. Upload a room image or gene
 This project uses a multi-provider fallback chain:
 
 1. AI Horde (primary)
-2. Hugging Face (fallback)
+2. Cloudflare AI (fallback)
+3. Hugging Face (fallback)
 
 - Required env variable: AI_HORDE_API_KEY
-- Optional fallback env variable: HUGGINGFACE_API_KEY
-- Generation first attempts AI Horde, then Hugging Face when needed
+- Optional fallback env variables: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, HUGGINGFACE_API_KEY
+- Generation first attempts AI Horde, then Cloudflare AI, then Hugging Face
 
 ## 🚀 Quick Start
 
@@ -39,6 +40,7 @@ This project uses a multi-provider fallback chain:
 - Node.js 18+
 - npm
 - AI Horde API key
+- (Optional) Cloudflare Workers AI token + account ID for fallback
 - (Optional) Hugging Face token with inference permissions for fallback
 
 ### 1. Clone
@@ -60,6 +62,8 @@ Create .env.local in project root:
 
 ```env
 AI_HORDE_API_KEY=ah_your_token_here
+CLOUDFLARE_API_TOKEN=cfut_your_token_here
+CLOUDFLARE_ACCOUNT_ID=your_account_id_here
 HUGGINGFACE_API_KEY=hf_your_token_here
 ```
 
@@ -104,7 +108,8 @@ Request body example:
 {
   "image": "data:image/jpeg;base64,...",
   "theme": "Modern",
-  "room": "Living Room"
+  "room": "Living Room",
+  "provider": "auto"
 }
 ```
 
@@ -117,9 +122,17 @@ Request body example:
 ```json
 {
   "theme": "Modern",
-  "room": "Living Room"
+  "room": "Living Room",
+  "provider": "auto"
 }
 ```
+
+Provider values:
+
+- auto (fallback chain)
+- ai-horde
+- cloudflare-ai
+- hugging-face
 
 ### POST /api/check-horde
 
@@ -210,6 +223,18 @@ Check these quickly:
 - Terminal logs for endpoint/model fallback details
 
 If Hugging Face also fails, verify token/credits and retry.
+
+### Cloudflare AI generation fails
+
+Check these quickly:
+
+- CLOUDFLARE_API_TOKEN exists in .env.local
+- CLOUDFLARE_ACCOUNT_ID matches your Cloudflare account
+- Token has Account -> Workers AI -> Edit permission
+- Workers AI is enabled for your account
+- Terminal logs for Cloudflare status/body details
+
+If Cloudflare fails in auto mode, the app falls back to Hugging Face.
 
 ## 🔐 Security
 
