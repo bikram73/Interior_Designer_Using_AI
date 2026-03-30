@@ -213,17 +213,6 @@ Check these quickly:
 
 If AI Horde fails, the app automatically tries Hugging Face.
 
-### Hugging Face generation fails
-
-Check these quickly:
-
-- HUGGINGFACE_API_KEY exists in .env.local
-- Token has Inference permission
-- Hugging Face quota/rate limits are available
-- Terminal logs for endpoint/model fallback details
-
-If Hugging Face also fails, verify token/credits and retry.
-
 ### Cloudflare AI generation fails
 
 Check these quickly:
@@ -235,6 +224,17 @@ Check these quickly:
 - Terminal logs for Cloudflare status/body details
 
 If Cloudflare fails in auto mode, the app falls back to Hugging Face.
+
+### Hugging Face generation fails
+
+Check these quickly:
+
+- HUGGINGFACE_API_KEY exists in .env.local
+- Token has Inference permission
+- Hugging Face quota/rate limits are available
+- Terminal logs for endpoint/model fallback details
+
+If Hugging Face also fails, verify token/credits and retry.
 
 ## 🔐 Security
 
