@@ -6,6 +6,11 @@ const AI_HORDE_POLL_INTERVAL_MS = 1500;
 const AI_HORDE_MAX_POLLS = 20;
 const HF_ROUTER_ENDPOINT = "https://router.huggingface.co/hf-inference/models";
 
+type AiHordeResult =
+  | { status: "success"; image: string }
+  | { status: "processing"; requestId: string }
+  | { status: "failed" };
+
 const STYLE_DETAILS: Record<string, string> = {
   Modern:
     "clean geometric lines, neutral palette, natural textures, balanced composition, contemporary decor",
@@ -58,11 +63,11 @@ function parseBase64FromDataUrl(imageDataUrl: string): string {
 async function generateWithAiHorde(
   prompt: string,
   imageDataUrl?: string
-): Promise<string | null> {
+): Promise<AiHordeResult> {
   const aiHordeKey = process.env.AI_HORDE_API_KEY;
   if (!aiHordeKey) {
     console.log("AI_HORDE_API_KEY not found.");
-    return null;
+    return { status: "failed" };
   }
 
   const body: Record<string, unknown> = {
@@ -104,13 +109,13 @@ async function generateWithAiHorde(
         submitResponse.status,
         errText.slice(0, 240)
       );
-      return null;
+      return { status: "failed" };
     }
 
     const submitData = (await submitResponse.json()) as { id?: string };
     if (!submitData?.id) {
       console.log("AI Horde submit did not return request id.");
-      return null;
+      return { status: "failed" };
     }
 
     const requestId = submitData.id;
@@ -139,7 +144,7 @@ async function generateWithAiHorde(
 
       if (checkData.faulted) {
         console.log("AI Horde generation faulted.");
-        return null;
+        return { status: "failed" };
       }
 
       if (!checkData.done) {
@@ -164,7 +169,7 @@ async function generateWithAiHorde(
           statusResponse.status,
           errText.slice(0, 240)
         );
-        return null;
+        return { status: "failed" };
       }
 
       const statusData = (await statusResponse.json()) as {
@@ -173,11 +178,11 @@ async function generateWithAiHorde(
       const image = statusData.generations?.find((item) => item.img)?.img;
       if (!image) {
         console.log("AI Horde returned no image in generations.");
-        return null;
+        return { status: "failed" };
       }
 
       if (image.startsWith("data:image")) {
-        return image;
+        return { status: "success", image };
       }
 
       // Handle HTTP URLs from AI Horde
@@ -190,22 +195,29 @@ async function generateWithAiHorde(
             const blob = await imgResponse.blob();
             const arrayBuffer = await blob.arrayBuffer();
             const base64 = Buffer.from(arrayBuffer).toString("base64");
-            return `data:image/jpeg;base64,${base64}`;
+            return {
+              status: "success",
+              image: `data:image/jpeg;base64,${base64}`,
+            };
           }
         } catch (err) {
           console.log("Failed to fetch AI Horde URL:", err);
         }
+
+        return { status: "failed" };
       }
 
-      return `data:image/jpeg;base64,${image}`;
+      return { status: "success", image: `data:image/jpeg;base64,${image}` };
     }
 
-    console.log("AI Horde timed out before completion.");
-    return null;
+    console.log(
+      "AI Horde timed out before completion. Returning request for async polling."
+    );
+    return { status: "processing", requestId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.log("AI Horde error:", message);
-    return null;
+    return { status: "failed" };
   }
 }
 
@@ -279,10 +291,7 @@ async function transformWithHuggingFace(
     "timbrooks/instruct-pix2pix",
     "stabilityai/stable-diffusion-xl-refiner-1.0",
   ];
-  const endpoints = [
-    "https://router.huggingface.co/hf-inference/models",
-    "https://api-inference.huggingface.co/models",
-  ];
+  const endpoints = ["https://router.huggingface.co/hf-inference/models"];
 
   for (const model of hfImg2ImgModels) {
     for (const endpoint of endpoints) {
@@ -368,15 +377,29 @@ export async function POST(request: Request) {
       imageLength: image?.length,
     });
 
-    const aiHordeOutput = await generateWithAiHorde(prompt, image);
-    if (aiHordeOutput) {
+    const aiHordeResult = await generateWithAiHorde(prompt, image);
+    if (aiHordeResult.status === "success") {
       return NextResponse.json(
         {
-          output: [aiHordeOutput],
+          output: [aiHordeResult.image],
           message: `SUCCESS: Generated your ${selectedTheme} ${selectedRoom} design with AI Horde.`,
           service: "AI Horde",
         },
         { status: 201 }
+      );
+    }
+
+    if (aiHordeResult.status === "processing") {
+      return NextResponse.json(
+        {
+          isProcessing: true,
+          predictionId: aiHordeResult.requestId,
+          output: [image],
+          message:
+            "AI Horde accepted your request and it is still in queue. Keeping your original image visible while processing continues.",
+          service: "AI Horde",
+        },
+        { status: 202 }
       );
     }
 
