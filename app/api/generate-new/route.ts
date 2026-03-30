@@ -5,6 +5,21 @@ const AI_HORDE_BASE_URL = "https://stablehorde.net/api/v2";
 const AI_HORDE_POLL_INTERVAL_MS = 1500;
 const AI_HORDE_MAX_POLLS = 20;
 const HF_ROUTER_ENDPOINT = "https://router.huggingface.co/hf-inference/models";
+const CLOUDFLARE_AI_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
+
+type ProviderChoice = "auto" | "ai-horde" | "hugging-face" | "cloudflare-ai";
+
+function normalizeProvider(value: unknown): ProviderChoice {
+  if (
+    value === "ai-horde" ||
+    value === "hugging-face" ||
+    value === "cloudflare-ai"
+  ) {
+    return value;
+  }
+
+  return "auto";
+}
 
 const STYLE_DETAILS: Record<string, string> = {
   Modern:
@@ -251,11 +266,106 @@ async function generateWithHuggingFace(prompt: string): Promise<string | null> {
   return null;
 }
 
+async function generateWithCloudflareAI(
+  prompt: string
+): Promise<string | null> {
+  const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!cloudflareApiToken || !cloudflareAccountId) {
+    console.log("Cloudflare AI credentials not found.");
+    return null;
+  }
+
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/ai/run/${CLOUDFLARE_AI_MODEL}`;
+
+  try {
+    const response = await fetchWithTimeout(
+      endpoint,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cloudflareApiToken}`,
+          "Content-Type": "application/json",
+          Accept: "image/*,application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          width: 512,
+          height: 512,
+        }),
+      },
+      45000
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("[Cloudflare AI] Request FAILED");
+      console.error(`  Status: ${response.status} ${response.statusText}`);
+      console.error(`  Endpoint: ${endpoint}`);
+      console.error(`  Content-Type: ${response.headers.get("content-type")}`);
+      console.error(`  Response: ${errText}`);
+
+      // Check for specific error patterns
+      if (response.status === 401) {
+        console.error("  → Likely cause: Invalid or expired API token");
+      } else if (response.status === 403) {
+        console.error(
+          "  → Likely cause: Token lacks required permissions or account mismatch"
+        );
+      } else if (response.status === 404) {
+        console.error(
+          "  → Likely cause: Invalid account ID or model not found"
+        );
+      } else if (response.status === 429) {
+        console.error("  → Likely cause: Rate limit exceeded");
+      }
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.startsWith("image/")) {
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const mimeType = contentType.split(";")[0] || "image/png";
+      return `data:${mimeType};base64,${base64}`;
+    }
+
+    const payload = (await response.json()) as {
+      result?: { image?: string } | string;
+      image?: string;
+    };
+
+    const resultImage =
+      typeof payload.result === "object"
+        ? payload.result?.image
+        : typeof payload.result === "string"
+        ? payload.result
+        : payload.image;
+
+    if (!resultImage) {
+      console.log("Cloudflare AI returned no image payload.");
+      return null;
+    }
+
+    if (resultImage.startsWith("data:image")) {
+      return resultImage;
+    }
+
+    return `data:image/png;base64,${resultImage}`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.log("Cloudflare AI error:", message);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const req = await request.json();
     const theme = req.theme;
     const room = req.room;
+    const provider = normalizeProvider(req.provider);
 
     const selectedTheme =
       typeof theme === "string" && theme.trim() ? theme.trim() : "Modern";
@@ -266,11 +376,80 @@ export async function POST(request: Request) {
       ROOM_DETAILS[selectedRoom] || ROOM_DETAILS["Living Room"];
 
     const prompt = `Photorealistic interior design photo of ${roomDetail}, in ${selectedTheme.toLowerCase()} style, ${styleDetail}, cohesive color story, premium materials, well-staged decor, realistic shadows, high detail, architectural photography, no empty room, no text, no watermark.`;
-
-    console.log("Generating new room design with AI Horde:", {
+    console.log("Generating new room design:", {
       theme: selectedTheme,
       room: selectedRoom,
+      provider,
     });
+
+    if (provider === "hugging-face") {
+      const hfOutput = await generateWithHuggingFace(prompt);
+      if (!hfOutput) {
+        return NextResponse.json(
+          {
+            error: "Hugging Face generation failed",
+            message:
+              "Hugging Face could not generate an image. Check credits/token and try again.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          output: [hfOutput],
+          message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design!`,
+          service: "Hugging Face",
+        },
+        { status: 201 }
+      );
+    }
+
+    if (provider === "cloudflare-ai") {
+      const cloudflareOutput = await generateWithCloudflareAI(prompt);
+      if (!cloudflareOutput) {
+        return NextResponse.json(
+          {
+            error: "Cloudflare AI generation failed",
+            message:
+              "Cloudflare AI could not generate an image. Check CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID and try again.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          output: [cloudflareOutput],
+          message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design with Cloudflare AI!`,
+          service: "Cloudflare AI",
+        },
+        { status: 201 }
+      );
+    }
+
+    if (provider === "ai-horde") {
+      const aiHordeOnlyOutput = await generateWithAiHorde(prompt);
+      if (!aiHordeOnlyOutput) {
+        return NextResponse.json(
+          {
+            error: "AI Horde generation failed",
+            message:
+              "AI Horde was selected but failed to generate an image. Try again or switch provider.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          output: [aiHordeOnlyOutput],
+          message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design!`,
+          service: "AI Horde",
+        },
+        { status: 201 }
+      );
+    }
 
     const aiHordeOutput = await generateWithAiHorde(prompt);
     if (aiHordeOutput) {
@@ -284,13 +463,25 @@ export async function POST(request: Request) {
       );
     }
 
+    const cloudflareOutput = await generateWithCloudflareAI(prompt);
+    if (cloudflareOutput) {
+      return NextResponse.json(
+        {
+          output: [cloudflareOutput],
+          message: `Generated a beautiful ${selectedTheme} ${selectedRoom} design with Cloudflare AI!`,
+          service: "Cloudflare AI",
+        },
+        { status: 201 }
+      );
+    }
+
     const output = await generateWithHuggingFace(prompt);
     if (!output) {
       return NextResponse.json(
         {
           error: "Failed to generate new room design",
           message:
-            "Hugging Face could not generate an image. Check HUGGINGFACE_API_KEY and try again.",
+            "AI Horde, Cloudflare AI, and Hugging Face are unavailable for this request. Check API key/credits and try again.",
         },
         { status: 500 }
       );

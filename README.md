@@ -23,11 +23,14 @@ A modern AI-powered app to redesign interior spaces. Upload a room image or gene
 
 ## 🤖 AI Provider
 
-This project uses AI Horde as the primary provider, with Hugging Face as fallback.
+This project uses a multi-provider fallback chain:
+
+1. AI Horde (primary)
+2. Hugging Face (fallback)
 
 - Required env variable: AI_HORDE_API_KEY
 - Optional fallback env variable: HUGGINGFACE_API_KEY
-- Generation first attempts AI Horde and falls back to Hugging Face when needed
+- Generation first attempts AI Horde, then Hugging Face when needed
 
 ## 🚀 Quick Start
 
@@ -186,6 +189,17 @@ if (Test-Path .next) { cmd /c "rd /s /q .next" }
 npm run dev
 ```
 
+### AI Horde generation fails
+
+Check these quickly:
+
+- AI_HORDE_API_KEY exists in .env.local
+- Key is valid and active
+- AI Horde queue may be busy; retry after a short wait
+- Terminal logs for AI Horde submit/check/status errors
+
+If AI Horde fails, the app automatically tries Hugging Face.
+
 ### Hugging Face generation fails
 
 Check these quickly:
@@ -195,14 +209,7 @@ Check these quickly:
 - Hugging Face quota/rate limits are available
 - Terminal logs for endpoint/model fallback details
 
-### AI Horde generation fails
-
-Check these quickly:
-
-- AI_HORDE_API_KEY exists in .env.local
-- Key is valid and active
-- AI Horde queue may be busy; retry after a short wait
-- Terminal logs for AI Horde submit/check/status errors
+If Hugging Face also fails, verify token/credits and retry.
 
 ## 🔐 Security
 

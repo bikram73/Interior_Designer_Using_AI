@@ -5,6 +5,21 @@ const AI_HORDE_BASE_URL = "https://stablehorde.net/api/v2";
 const AI_HORDE_POLL_INTERVAL_MS = 1500;
 const AI_HORDE_MAX_POLLS = 20;
 const HF_ROUTER_ENDPOINT = "https://router.huggingface.co/hf-inference/models";
+const CLOUDFLARE_AI_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
+
+type ProviderChoice = "auto" | "ai-horde" | "hugging-face" | "cloudflare-ai";
+
+function normalizeProvider(value: unknown): ProviderChoice {
+  if (
+    value === "ai-horde" ||
+    value === "hugging-face" ||
+    value === "cloudflare-ai"
+  ) {
+    return value;
+  }
+
+  return "auto";
+}
 
 type AiHordeResult =
   | { status: "success"; image: string }
@@ -347,12 +362,107 @@ async function transformWithHuggingFace(
   return generateWithHuggingFace(prompt);
 }
 
+async function generateWithCloudflareAI(
+  prompt: string
+): Promise<string | null> {
+  const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!cloudflareApiToken || !cloudflareAccountId) {
+    console.log("Cloudflare AI credentials not found.");
+    return null;
+  }
+
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/ai/run/${CLOUDFLARE_AI_MODEL}`;
+
+  try {
+    const response = await fetchWithTimeout(
+      endpoint,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cloudflareApiToken}`,
+          "Content-Type": "application/json",
+          Accept: "image/*,application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          width: 512,
+          height: 512,
+        }),
+      },
+      45000
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("[Cloudflare AI] Request FAILED");
+      console.error(`  Status: ${response.status} ${response.statusText}`);
+      console.error(`  Endpoint: ${endpoint}`);
+      console.error(`  Content-Type: ${response.headers.get("content-type")}`);
+      console.error(`  Response: ${errText}`);
+
+      // Check for specific error patterns
+      if (response.status === 401) {
+        console.error("  → Likely cause: Invalid or expired API token");
+      } else if (response.status === 403) {
+        console.error(
+          "  → Likely cause: Token lacks required permissions or account mismatch"
+        );
+      } else if (response.status === 404) {
+        console.error(
+          "  → Likely cause: Invalid account ID or model not found"
+        );
+      } else if (response.status === 429) {
+        console.error("  → Likely cause: Rate limit exceeded");
+      }
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.startsWith("image/")) {
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const mimeType = contentType.split(";")[0] || "image/png";
+      return `data:${mimeType};base64,${base64}`;
+    }
+
+    const payload = (await response.json()) as {
+      result?: { image?: string } | string;
+      image?: string;
+    };
+
+    const resultImage =
+      typeof payload.result === "object"
+        ? payload.result?.image
+        : typeof payload.result === "string"
+        ? payload.result
+        : payload.image;
+
+    if (!resultImage) {
+      console.log("Cloudflare AI returned no image payload.");
+      return null;
+    }
+
+    if (resultImage.startsWith("data:image")) {
+      return resultImage;
+    }
+
+    return `data:image/png;base64,${resultImage}`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.log("Cloudflare AI error:", message);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const req = await request.json();
     const image = req.image;
     const theme = req.theme;
     const room = req.room;
+    const provider = normalizeProvider(req.provider);
 
     if (!image) {
       return NextResponse.json(
@@ -370,12 +480,96 @@ export async function POST(request: Request) {
       ROOM_DETAILS[selectedRoom] || ROOM_DETAILS["Living Room"];
 
     const prompt = `Redesign this exact ${selectedRoom.toLowerCase()} in ${selectedTheme.toLowerCase()} style. ${styleDetail}. Include ${roomDetail}. Keep architecture and window placements realistic. Photorealistic interior photography, high detail, no text, no watermark.`;
-
-    console.log("AI Horde transformation request:", {
+    console.log("Transformation request:", {
       theme: selectedTheme,
       room: selectedRoom,
+      provider,
       imageLength: image?.length,
     });
+
+    if (provider === "hugging-face") {
+      const hfOutput = await transformWithHuggingFace(image, prompt);
+      if (!hfOutput) {
+        return NextResponse.json(
+          {
+            error: "Hugging Face generation failed",
+            message:
+              "Hugging Face could not transform this image. Check credits/token and try again.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          output: [hfOutput],
+          message: `SUCCESS: Transformed your uploaded ${selectedRoom} with ${selectedTheme} styling.`,
+          service: "Hugging Face",
+        },
+        { status: 201 }
+      );
+    }
+
+    if (provider === "cloudflare-ai") {
+      const cloudflareOutput = await generateWithCloudflareAI(prompt);
+      if (!cloudflareOutput) {
+        return NextResponse.json(
+          {
+            error: "Cloudflare AI generation failed",
+            message:
+              "Cloudflare AI could not generate an image. Check CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID and try again.",
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          output: [cloudflareOutput],
+          message:
+            "Generated with Cloudflare AI. This path may not preserve exact uploaded room structure.",
+          service: "Cloudflare AI",
+        },
+        { status: 201 }
+      );
+    }
+
+    if (provider === "ai-horde") {
+      const aiHordeOnlyResult = await generateWithAiHorde(prompt, image);
+      if (aiHordeOnlyResult.status === "success") {
+        return NextResponse.json(
+          {
+            output: [aiHordeOnlyResult.image],
+            message: `SUCCESS: Generated your ${selectedTheme} ${selectedRoom} design with AI Horde.`,
+            service: "AI Horde",
+          },
+          { status: 201 }
+        );
+      }
+
+      if (aiHordeOnlyResult.status === "processing") {
+        return NextResponse.json(
+          {
+            isProcessing: true,
+            predictionId: aiHordeOnlyResult.requestId,
+            output: [image],
+            message:
+              "AI Horde accepted your request and it is still in queue. Keeping your original image visible while processing continues.",
+            service: "AI Horde",
+          },
+          { status: 202 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error: "AI Horde generation failed",
+          message:
+            "AI Horde was selected but failed to generate an image. Try again or switch provider.",
+        },
+        { status: 500 }
+      );
+    }
 
     const aiHordeResult = await generateWithAiHorde(prompt, image);
     if (aiHordeResult.status === "success") {
@@ -403,13 +597,26 @@ export async function POST(request: Request) {
       );
     }
 
+    const cloudflareOutput = await generateWithCloudflareAI(prompt);
+    if (cloudflareOutput) {
+      return NextResponse.json(
+        {
+          output: [cloudflareOutput],
+          message:
+            "AI Horde was unavailable, so Cloudflare AI generated this design.",
+          service: "Cloudflare AI",
+        },
+        { status: 201 }
+      );
+    }
+
     const output = await transformWithHuggingFace(image, prompt);
     if (!output) {
       return NextResponse.json(
         {
           error: "Image generation failed",
           message:
-            "Hugging Face could not transform this image. Try another photo angle or adjust style/room selection.",
+            "AI Horde, Cloudflare AI, and Hugging Face are unavailable for this request. Check API key/credits and try again.",
         },
         { status: 500 }
       );

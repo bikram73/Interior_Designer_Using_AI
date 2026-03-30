@@ -18,7 +18,29 @@ import {
 
 const themes = ["Modern", "Vintage", "Minimalist", "Professional"];
 const rooms = ["Living Room", "Dining Room", "Bedroom", "Bathroom", "Office"];
+const aiProviders = [
+  "Auto (Fallback)",
+  "AI Horde",
+  "Cloudflare AI",
+  "Hugging Face",
+];
 const NOTIFICATION_TIMEOUT_MS = 4500;
+
+function toApiProvider(selectedProvider: string): string {
+  if (selectedProvider === "AI Horde") {
+    return "ai-horde";
+  }
+
+  if (selectedProvider === "Hugging Face") {
+    return "hugging-face";
+  }
+
+  if (selectedProvider === "Cloudflare AI") {
+    return "cloudflare-ai";
+  }
+
+  return "auto";
+}
 
 function getNotificationType(message: string): "success" | "error" | "info" {
   const normalized = message.toLowerCase();
@@ -41,6 +63,7 @@ export default function HomePage() {
   const [urlLoading, setUrlLoading] = useState<boolean>(false);
   const [theme, setTheme] = useState<string>(themes[0]);
   const [room, setRoom] = useState<string>(rooms[0]);
+  const [provider, setProvider] = useState<string>(aiProviders[0]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>("");
   const [file, setFile] = useState<File | null>(null);
@@ -150,7 +173,11 @@ export default function HomePage() {
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ theme, room }),
+              body: JSON.stringify({
+                theme,
+                room,
+                provider: toApiProvider(provider),
+              }),
             });
 
             const fallbackResult = await fallbackResponse.json();
@@ -197,7 +224,7 @@ export default function HomePage() {
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(pollInterval);
-  }, [processingId, processingService, theme, room]);
+  }, [processingId, processingService, theme, room, provider]);
 
   // Handle image drop
   const onImageDrop = useCallback(
@@ -334,7 +361,12 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ image: base64Image, theme, room }),
+        body: JSON.stringify({
+          image: base64Image,
+          theme,
+          room,
+          provider: toApiProvider(provider),
+        }),
       });
 
       const result = await response.json();
@@ -410,7 +442,15 @@ export default function HomePage() {
         setLoading(false);
       }
     }
-  }, [file, base64Image, theme, room, persistHistory, processingService]);
+  }, [
+    file,
+    base64Image,
+    theme,
+    room,
+    provider,
+    persistHistory,
+    processingService,
+  ]);
 
   return (
     <>
@@ -493,7 +533,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="mt-6 grid grid-cols-1 gap-4 px-4 sm:mt-8 sm:grid-cols-2 lg:px-6 xl:px-8"
+          className="mt-6 grid grid-cols-1 gap-4 px-4 sm:mt-8 sm:grid-cols-3 lg:px-6 xl:px-8"
         >
           <SelectMenu
             label="Design Style"
@@ -506,6 +546,12 @@ export default function HomePage() {
             options={rooms}
             selected={room}
             onChange={setRoom}
+          />
+          <SelectMenu
+            label="AI Provider"
+            options={aiProviders}
+            selected={provider}
+            onChange={setProvider}
           />
         </motion.section>
 
